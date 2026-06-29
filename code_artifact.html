@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ล่าคำสัมผัส - เกมคำคล้องจอง</title>
+    <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #9b5de5;
+            --secondary: #00bbf9;
+            --success: #00f5d4;
+            --danger: #f15bb5;
+            --warning: #fee440;
+            --text-dark: #2b2d42;
+            --text-light: #ffffff;
+            --bg-gradient: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Mali', cursive;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-dark);
+            overflow: hidden; /* Prevent scrolling on whole page */
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none; /* Prevent browser gestures */
+        }
+
+        /* --- Screens --- */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            background: var(--bg-gradient);
+            z-index: 10;
+        }
+        .screen.active {
+            display: flex;
+        }
+
+        /* Background Decor */
+        .bg-decor {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .cloud {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50px;
+        }
+        .cloud::before, .cloud::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+        }
+
+        /* --- UI Elements --- */
+        .container-box {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            margin: auto;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            position: relative;
+            z-index: 30;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+
+        h1 { color: var(--primary); font-size: 2.2rem; margin-bottom: 10px; text-shadow: 2px 2px 0px white; }
+        h2 { color: var(--secondary); margin-bottom: 15px; }
+        p.subtitle { color: #666; margin-bottom: 20px; }
+
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid var(--secondary);
+            border-radius: 10px;
+            font-size: 1.1rem;
+            outline: none;
+        }
+        input[type="text"]:focus { border-color: var(--primary); }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #7b3eb5;
+            transition: all 0.1s;
+            margin: 5px;
+            font-weight: bold;
+        }
+        .btn:active { transform: translateY(5px); box-shadow: none; }
+        .btn-green { background: var(--success); box-shadow: 0 5px 0 #00c2a8; color: #2b2d42; }
+        .btn-green:active { box-shadow: none; }
+        .btn-blue { background: var(--secondary); box-shadow: 0 5px 0 #0095c7; }
+        .btn-blue:active { box-shadow: none; }
+        .btn-red { background: var(--danger); box-shadow: 0 5px 0 #c2408e; }
+        .btn-red:active { box-shadow: none; }
+
+        /* --- Game Screen --- */
+        #game-screen {
+            background: transparent;
+        }
+        /* CRITICAL: Bubble Area Requirements */
+        #bubbleArea {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            touch-action: none;
+            /* NO overflow:hidden here! */
+        }
+
+        #game-hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 50;
+            pointer-events: none;
+        }
+        .hud-box {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 15px;
+            border-radius: 15px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 1.1rem;
+        }
+
+        #target-word-container {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            pointer-events: none;
+            text-align: center;
+        }
+        .target-box {
+            background: var(--warning);
+            padding: 10px 40px;
+            border-radius: 30px;
+            font-size: 2rem;
+            font-weight: bold;
+            box-shadow: 0 5px 0 #cca81e, 0 10px 15px rgba(0,0,0,0.2);
+            color: #2b2d42;
+            border: 3px solid white;
+            text-shadow: 1px 1px 0px white;
+        }
+
+        /* The Bubbles */
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2b2d42;
+            cursor: pointer;
+            user-select: none;
+            /* Modern bubble look */
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(173,216,230,0.8));
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.1), 0 5px 10px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.5);
+            /* NO CSS animation or transition for floating */
+        }
+        .bubble.pop {
+            transform: scale(1.5);
+            opacity: 0;
+            transition: all 0.2s ease-out;
+        }
+
+        /* Effects */
+        .shake {
+            animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-5px, 0, 0); }
+            20%, 80% { transform: translate3d(5px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-10px, 0, 0); }
+            40%, 60% { transform: translate3d(10px, 0, 0); }
+        }
+        
+        .combo-text {
+            position: absolute;
+            color: var(--danger);
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none;
+            z-index: 60;
+            animation: floatUpFade 1s forwards;
+            text-shadow: 2px 2px 0 white;
+        }
+        @keyframes floatUpFade {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+        }
+
+        #countdown-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            font-size: 8rem;
+            font-weight: bold;
+            text-shadow: 4px 4px 0 var(--primary);
+        }
+
+        /* --- Settings/Tables --- */
+        .settings-group {
+            text-align: left;
+            margin-bottom: 15px;
+            background: rgba(0,0,0,0.03);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .settings-group label { display: block; font-weight: bold; margin-bottom: 5px; color: var(--primary); }
+        .word-list { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 5px; border-radius: 5px; margin-bottom: 10px; }
+        .word-item { background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); font-size: 0.9rem;}
+        .word-item button { padding: 5px 10px; font-size: 0.8rem; margin:0;}
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; border-bottom: 1px solid #ddd; }
+        th { background: var(--secondary); color: white; }
+        tr:nth-child(even) { background: rgba(0,0,0,0.02); }
+
+        /* Summary Card Specific */
+        #summary-card {
+            background: white;
+            border: 4px solid var(--primary);
+        }
+        .stars { font-size: 2.5rem; color: #ccc; margin: 10px 0; }
+        .stars .active { color: var(--warning); text-shadow: 0 0 5px rgba(254,228,64,0.5); }
+        
+        /* Checkbox slider */
+        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        .flex-row { display: flex; justify-content: space-between; align-items: center;}
+    </style>
+</head>
+<body>
+
+    <!-- Background Decoration -->
+    <div class="bg-decor" id="bg-decor"></div>
+
+    <!-- 1. Home Screen -->
+    <div id="home-screen" class="screen active">
+        <div class="container-box">
+            <h1 id="home-title">🎤 ล่าคำสัมผัส</h1>
+            <p class="subtitle" id="home-subtitle">โดย ครูเนเน่ | โรงเรียนบ้านบุตะโก</p>
+            
+            <input type="text" id="student-name" placeholder="พิมพ์ชื่อนักเรียนที่นี่..." autocomplete="off">
+            <br><br>
+            <button class="btn btn-green" style="width: 100%; font-size: 1.5rem;" onclick="preStartGame()">▶ เริ่มเล่นเกม</button>
+            <br><br>
+            <button class="btn btn-blue" onclick="showScreen('leaderboard-screen'); renderLeaderboard();">🏆 ตารางคะแนน</button>
+            <button class="btn" onclick="showScreen('settings-screen'); loadSettingsUI();">⚙️ ตั้งค่า</button>
+        </div>
+    </div>
+
+    <!-- 2. Game Screen -->
+    <div id="game-screen" class="screen">
+        <div id="game-hud">
+            <div class="hud-box">⏱️ <span id="hud-time">60</span>s</div>
+            <div class="hud-box">⭐ <span id="hud-score">0</span> <small style="color:var(--danger)">(x<span id="hud-combo">0</span>)</small></div>
+        </div>
+        
+        <div id="target-word-container">
+            <div style="font-size: 1rem; color: #555; background: rgba(255,255,255,0.7); display:inline-block; padding: 2px 10px; border-radius: 10px 10px 0 0; margin-bottom: -5px;">หาคำคล้องจองกับคำว่า</div>
+            <div class="target-box" id="target-word">...</div>
+        </div>
+
+        <!-- CRITICAL: Area for Bubbles -->
+        <div id="bubbleArea"></div>
+
+        <div id="countdown-overlay">3</div>
+    </div>
+
+    <!-- 3. Summary Screen -->
+    <div id="summary-screen" class="screen">
+        <div class="container-box" id="summary-card">
+            <h1 id="sum-game-name">สรุปผลการเล่น</h1>
+            <h2 id="sum-student-name">ชื่อนักเรียน</h2>
+            
+            <div class="stars" id="sum-stars">★ ★ ★</div>
+            
+            <div style="font-size: 4rem; font-weight: bold; color: var(--primary); line-height: 1;"><span id="sum-score">0</span></div>
+            <p>คะแนนรวม</p>
+            
+            <div style="display: flex; justify-content: space-around; margin: 20px 0; background: #f8f9fa; padding: 10px; border-radius: 10px;">
+                <div><span style="color:var(--success); font-weight:bold;">✔ ถูก</span><br><span id="sum-correct">0</span></div>
+                <div><span style="color:var(--danger); font-weight:bold;">✘ ผิด</span><br><span id="sum-wrong">0</span></div>
+                <div><span style="color:var(--warning); font-weight:bold;">🔥 คอมโบสูงสุด</span><br><span id="sum-maxcombo">0</span></div>
+            </div>
+
+            <p style="font-size: 0.9rem; color: #666;" id="sum-footer">ครูเนเน่ | โรงเรียนบ้านบุตะโก<br><span id="sum-date"></span></p>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn btn-blue" onclick="saveSummaryImage()">📸 บันทึกรูปภาพ</button>
+                <button class="btn btn-green" onclick="showScreen('home-screen')">🏠 หน้าแรก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Leaderboard Screen -->
+    <div id="leaderboard-screen" class="screen">
+        <div class="container-box">
+            <h1>🏆 ตารางคะแนนสูงสุด</h1>
+            <div style="max-height: 50vh; overflow-y: auto; margin-bottom: 20px;">
+                <table id="leaderboard-table">
+                    <thead><tr><th>อันดับ</th><th>ชื่อ</th><th>คะแนน</th></tr></thead>
+                    <tbody><!-- JS Inject --></tbody>
+                </table>
+            </div>
+            <button class="btn btn-red" onclick="clearLeaderboard()" style="font-size: 0.9rem;">ล้างข้อมูล</button>
+            <button class="btn btn-blue" onclick="showScreen('home-screen')">🏠 กลับหน้าแรก</button>
+        </div>
+    </div>
+
+    <!-- 5. Settings Screen -->
+    <div id="settings-screen" class="screen">
+        <div class="container-box" style="text-align: left;">
+            <h1 style="text-align: center;">⚙️ ตั้งค่า (สำหรับครู)</h1>
+            
+            <div class="settings-group">
+                <label>ข้อมูลทั่วไป</label>
+                <input type="text" id="set-teacher" placeholder="ชื่อครู">
+                <input type="text" id="set-school" placeholder="ชื่อโรงเรียน">
+                <input type="text" id="set-gamename" placeholder="ชื่อเกม">
+            </div>
+
+            <div class="settings-group">
+                <label>ตั้งค่าเกม</label>
+                <div class="flex-row"><span>เวลาเล่น (วินาที):</span> <input type="number" id="set-time" style="width: 80px;" min="10" max="300"></div>
+                <div class="flex-row"><span>จำนวนฟองสูงสุด:</span> <input type="number" id="set-maxbubbles" style="width: 80px;" min="3" max="20"></div>
+                <div class="flex-row">
+                    <span>ความยาก:</span>
+                    <select id="set-diff" style="width: 120px; padding: 5px;">
+                        <option value="easy">ง่าย (ช้า)</option>
+                        <option value="normal">ปกติ</option>
+                        <option value="hard">ยาก (เร็ว)</option>
+                    </select>
+                </div>
+                <div class="flex-row" style="margin-top: 10px;">
+                    <span>เปิดเสียงประกอบ:</span>
+                    <label class="switch">
+                        <input type="checkbox" id="set-sound">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <label>จัดการคำศัพท์ (โจทย์ → ถูก | ผิด)</label>
+                <div class="word-list" id="set-wordlist"></div>
+                <div style="background: white; padding: 10px; border-radius: 5px; border: 1px dashed #9b5de5;">
+                    <input type="text" id="add-target" placeholder="คำโจทย์ (เช่น นา)" style="padding:5px;">
+                    <input type="text" id="add-correct" placeholder="คำถูก คั่นด้วยลูกน้ำ (เช่น ตา,มา,ปลา)" style="padding:5px;">
+                    <input type="text" id="add-wrong" placeholder="คำผิด คั่นด้วยลูกน้ำ (เช่น รถ,ใจ)" style="padding:5px;">
+                    <button class="btn btn-green" style="width:100%; margin: 5px 0 0 0;" onclick="addWordPair()">+ เพิ่มคำ</button>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-green" onclick="saveSettings()">💾 บันทึกการตั้งค่า</button>
+                <button class="btn" onclick="resetSettings()">🔄 คืนค่าเริ่มต้น</button>
+                <br>
+                <button class="btn btn-red" onclick="showScreen('home-screen')" style="margin-top:10px;">❌ ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- HTML2Canvas for saving image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <script>
+        /* =========================================
+           1. INITIAL DATA & STATE
+           ========================================= */
+        // Use JSON.parse(JSON.stringify()) instead of structuredClone for compatibility
+        const defaultSettings = {
+            teacherName: "ครูเนเน่",
+            schoolName: "โรงเรียนบ้านบุตะโก",
+            gameName: "🎤 ล่าคำสัมผัส",
+            timeLimit: 60,
+            maxBubbles: 8,
+            difficulty: 'normal',
+            soundEnabled: true,
+            words: [
+                { target: "นา", correct: ["ตา", "ปลา", "มา", "ฟ้า", "ขา", "ยา"], wrong: ["รถ", "กิน", "ใจ", "โต", "บิน", "ดี"] },
+                { target: "ใจ", correct: ["ไป", "ไม้", "ใหม่", "ไหน", "ใบ", "ใคร"], wrong: ["ดาว", "ขาว", "มือ", "ถิ่น", "หิน", "หมู"] },
+                { target: "ดาว", correct: ["ขาว", "หนาว", "ยาว", "สาว", "ก้าว", "ข้าว"], wrong: ["ดิน", "กิน", "เนิน", "เทิน", "นา", "ตา"] },
+                { target: "มือ", correct: ["คือ", "ลือ", "ถือ", "ซื้อ", "ดื้อ", "รื้อ"], wrong: ["ฟ้า", "มา", "ใจ", "ไป", "รถ", "สวย"] },
+                { target: "เดิน", correct: ["เนิน", "เทิน", "เขิน", "เงิน", "เกิน", "เมิน"], wrong: ["ยาว", "สาว", "คือ", "ลือ", "หิน", "กิน"] },
+                { target: "ดิน", correct: ["หิน", "ถิ่น", "กิน", "บิน", "ริน", "ชิน"], wrong: ["ไม้", "ใหม่", "ขาว", "หนาว", "ฟ้า", "ปลา"] }
+            ]
+        };
+
+        let settings = {};
+        let leaderboard = [];
+
+        // Game State
+        let gameRunning = false;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let correctCount = 0;
+        let wrongCount = 0;
+        let timeLeft = 0;
+        let bubbles = []; // Array to track active bubbles
+        let currentTargetWord = null;
+        let gameTimer = null;
+        let spawnerTimer = null;
+        let animationFrameId = null;
+        let studentName = "";
+
+        // Audio Context
+        let audioCtx = null;
+
+        /* =========================================
+           2. INITIALIZATION & UTILS
+           ========================================= */
+        function init() {
+            loadData();
+            applySettingsToUI();
+            generateClouds();
+            
+            // Allow audio context to start on first interaction
+            document.body.addEventListener('pointerdown', initAudio, { once: true });
+        }
+
+        function loadData() {
+            try {
+                const savedSet = localStorage.getItem('rhymingSettings');
+                if (savedSet) {
+                    settings = JSON.parse(savedSet);
+                    // Ensure all keys exist in case of updates
+                    for (let key in defaultSettings) {
+                        if (settings[key] === undefined) settings[key] = JSON.parse(JSON.stringify(defaultSettings[key]));
+                    }
+                } else {
+                    settings = JSON.parse(JSON.stringify(defaultSettings));
+                }
+
+                const savedLb = localStorage.getItem('rhymingLeaderboard');
+                if (savedLb) leaderboard = JSON.parse(savedLb);
+            } catch(e) {
+                console.error("Storage error, using defaults", e);
+                settings = JSON.parse(JSON.stringify(defaultSettings));
+            }
+        }
+
+        function applySettingsToUI() {
+            document.getElementById('home-title').innerText = settings.gameName;
+            document.getElementById('home-subtitle').innerText = `โดย ${settings.teacherName} | ${settings.schoolName}`;
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        /* =========================================
+           3. AUDIO SYSTEM (Web Audio API)
+           ========================================= */
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!settings.soundEnabled || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'correct') {
+                    // Cheerful ping
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime); // E5
+                    osc.frequency.exponentialRampToValueAtTime(1318.51, audioCtx.currentTime + 0.1); // E6
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                } else if (type === 'wrong') {
+                    // Buzz
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                }
+            } catch(e) { console.error("Audio error", e); }
+        }
+
+        /* =========================================
+           4. CORE GAME MECHANICS (CRITICAL)
+           ========================================= */
+        function preStartGame() {
+            const nameInput = document.getElementById('student-name').value.trim();
+            if (!nameInput) {
+                alert("กรุณาพิมพ์ชื่อนักเรียนก่อนเริ่มเกมครับ/ค่ะ");
+                return;
+            }
+            studentName = nameInput;
+            
+            if(settings.words.length === 0) {
+                alert("ไม่มีคำศัพท์ในระบบ กรุณาเพิ่มในหน้าตั้งค่า");
+                return;
+            }
+
+            initAudio();
+            showScreen('game-screen');
+            startCountdown();
+        }
+
+        function startCountdown() {
+            const overlay = document.getElementById('countdown-overlay');
+            overlay.style.display = 'flex';
+            let count = 3;
+            overlay.innerText = count;
+            
+            const countInt = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    overlay.innerText = count;
+                } else if (count === 0) {
+                    overlay.innerText = "เริ่ม!";
+                } else {
+                    clearInterval(countInt);
+                    overlay.style.display = 'none';
+                    startGame();
+                }
+            }, 800);
+        }
+
+        function startGame() {
+            // Reset Stats
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            correctCount = 0;
+            wrongCount = 0;
+            timeLeft = settings.timeLimit;
+            bubbles = [];
+            document.getElementById('bubbleArea').innerHTML = '';
+            updateHUD();
+
+            gameRunning = true;
+            pickNewTargetWord();
+            
+            // Start Timers & Loops
+            gameTimer = setInterval(updateTime, 1000);
+            
+            // Requirement 11: Spawn 1 bubble immediately
+            spawnBubble(); 
+            
+            // Start Spawner
+            let spawnRate = settings.difficulty === 'hard' ? 600 : (settings.difficulty === 'easy' ? 1200 : 800);
+            spawnerTimer = setInterval(() => {
+                if (gameRunning && bubbles.length < settings.maxBubbles) {
+                    spawnBubble();
+                }
+            }, spawnRate);
+
+            // CRITICAL: Start the animation loop
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            lastFrameTime = performance.now();
+            animationFrameId = requestAnimationFrame(moveBubbles);
+        }
+
+        function pickNewTargetWord() {
+            const list = settings.words;
+            const randIndex = Math.floor(Math.random() * list.length);
+            currentTargetWord = list[randIndex];
+            document.getElementById('target-word').innerText = currentTargetWord.target;
+            
+            // Small animation for target word
+            const tw = document.getElementById('target-word');
+            tw.style.transform = 'scale(1.2)';
+            setTimeout(() => tw.style.transform = 'scale(1)', 200);
+        }
+
+        function spawnBubble() {
+            if(!gameRunning || !currentTargetWord) return;
+
+            const area = document.getElementById('bubbleArea');
+            const size = Math.floor(Math.random() * 20) + 70; // 70-90px
+            
+            // Determine word (chance of correct vs wrong based on difficulty)
+            let isCorrect = true;
+            let wordText = "";
+            let probCorrect = settings.difficulty === 'easy' ? 0.6 : (settings.difficulty === 'hard' ? 0.3 : 0.4);
+            
+            if (Math.random() < probCorrect) {
+                // Correct word
+                const corrects = currentTargetWord.correct;
+                wordText = corrects[Math.floor(Math.random() * corrects.length)];
+                isCorrect = true;
+            } else {
+                // Wrong word (distractor)
+                // Mix distractors from current word and random other words
+                if (Math.random() > 0.5 && currentTargetWord.wrong.length > 0) {
+                    const wrongs = currentTargetWord.wrong;
+                    wordText = wrongs[Math.floor(Math.random() * wrongs.length)];
+                } else {
+                    // Pick random correct word from a DIFFERENT target
+                    const otherWords = settings.words.filter(w => w.target !== currentTargetWord.target);
+                    if(otherWords.length > 0) {
+                        const randomOther = otherWords[Math.floor(Math.random() * otherWords.length)];
+                        wordText = randomOther.correct[Math.floor(Math.random() * randomOther.correct.length)];
+                    } else {
+                        wordText = "---";
+                    }
+                }
+                isCorrect = false;
+            }
+
+            // Create DOM element
+            const el = document.createElement('div');
+            el.className = 'bubble';
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+            el.innerText = wordText;
+
+            // Positioning (CRITICAL requirement)
+            const startX = Math.random() * (window.innerWidth - size);
+            const startY = window.innerHeight + size; // Start below screen
+            
+            el.style.left = startX + 'px';
+            el.style.top = startY + 'px';
+
+            // Base Speed
+            let baseSpeed = (Math.random() * 0.4) + 0.3; // 0.3 to 0.7
+            if (settings.difficulty === 'easy') baseSpeed *= 0.7;
+            if (settings.difficulty === 'hard') baseSpeed *= 1.5;
+
+            // Store object
+            const bubbleObj = {
+                el: el,
+                x: startX,
+                y: startY,
+                size: size,
+                speed: baseSpeed,
+                isCorrect: isCorrect,
+                word: wordText,
+                popped: false
+            };
+
+            // CRITICAL: Use pointerdown with passive:false
+            el.addEventListener('pointerdown', (e) => handleBubbleTap(e, bubbleObj), { passive: false });
+
+            area.appendChild(el);
+            bubbles.push(bubbleObj);
+        }
+
+        // CRITICAL: Movement loop using JS requestAnimationFrame
+        let lastFrameTime = 0;
+        function moveBubbles(currentTime) {
+            if (!gameRunning) return;
+            
+            // We use simple px decrement per frame to fulfill requirement: b.y -= b.speed
+            // For smoother cross-device, could use deltaTime, but requirement specifies px/frame specifically.
+            // "ความเร็ว speed ประมาณ 0.3–0.7 px/เฟรม"
+
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                let b = bubbles[i];
+                if (b.popped) continue;
+
+                b.y -= b.speed;
+                b.el.style.top = b.y + 'px';
+
+                // CRITICAL requirement 7: Remove only when y < -size
+                if (b.y < -b.size) {
+                    b.el.remove();
+                    bubbles.splice(i, 1);
+                    // Generate replacement if we are under max (handled by spawner interval, but can force one here)
+                    if(bubbles.length < settings.maxBubbles) spawnBubble();
+                }
+            }
+            
+            animationFrameId = requestAnimationFrame(moveBubbles);
+        }
+
+        function handleBubbleTap(e, bubbleObj) {
+            e.preventDefault(); // Prevent scroll/zoom on touch
+            if (!gameRunning || bubbleObj.popped) return;
+            
+            bubbleObj.popped = true;
+
+            if (bubbleObj.isCorrect) {
+                // Correct!
+                playSound('correct');
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+                correctCount++;
+                
+                let points = 10 + (combo * 2);
+                score += points;
+                showFloatingText(`+${points}`, bubbleObj.x, bubbleObj.y, 'var(--success)');
+
+                // Pop effect
+                bubbleObj.el.classList.add('pop');
+                
+                // Remove from array and DOM
+                setTimeout(() => {
+                    bubbleObj.el.remove();
+                    bubbles = bubbles.filter(b => b !== bubbleObj);
+                }, 200);
+
+                // Requirement 11: Clear old bubbles, change target, spawn 1 new immediately
+                clearAllBubbles();
+                pickNewTargetWord();
+                spawnBubble();
+
+            } else {
+                // Wrong!
+                playSound('wrong');
+                combo = 0;
+                wrongCount++;
+                score = Math.max(0, score - 5);
+                showFloatingText(`-5`, bubbleObj.x, bubbleObj.y, 'var(--danger)');
+
+                // Screen shake
+                const screen = document.getElementById('game-screen');
+                screen.classList.add('shake');
+                setTimeout(() => screen.classList.remove('shake'), 300);
+
+                // Pop wrong bubble
+                bubbleObj.el.style.background = 'radial-gradient(circle at 30% 30%, #ff9999, #f15bb5)';
+                bubbleObj.el.classList.add('pop');
+                setTimeout(() => {
+                    bubbleObj.el.remove();
+                    bubbles = bubbles.filter(b => b !== bubbleObj);
+                    spawnBubble(); // Spawn replacement
+                }, 200);
+            }
+            
+            updateHUD();
+        }
+
+        function clearAllBubbles() {
+            bubbles.forEach(b => {
+                if(b.el) b.el.remove();
+            });
+            bubbles = [];
+        }
+
+        function showFloatingText(text, x, y, color) {
+            const el = document.createElement('div');
+            el.className = 'combo-text';
+            el.innerText = text;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            el.style.color = color;
+            document.getElementById('bubbleArea').appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        function updateHUD() {
+            document.getElementById('hud-score').innerText = score;
+            document.getElementById('hud-combo').innerText = combo;
+        }
+
+        function updateTime() {
+            timeLeft--;
+            document.getElementById('hud-time').innerText = timeLeft;
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+
+        /* =========================================
+           5. SUMMARY & LEADERBOARD
+           ========================================= */
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameTimer);
+            clearInterval(spawnerTimer);
+            if(animationFrameId) cancelAnimationFrame(animationFrameId);
+            
+            saveScore();
+            renderSummary();
+            showScreen('summary-screen');
+        }
+
+        function saveScore() {
+            const entry = {
+                name: studentName,
+                score: score,
+                date: new Date().getTime()
+            };
+            leaderboard.push(entry);
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 50); // Keep top 50
+            localStorage.setItem('rhymingLeaderboard', JSON.stringify(leaderboard));
+        }
+
+        function renderSummary() {
+            document.getElementById('sum-game-name').innerText = settings.gameName;
+            document.getElementById('sum-student-name').innerText = studentName;
+            document.getElementById('sum-score').innerText = score;
+            document.getElementById('sum-correct').innerText = correctCount;
+            document.getElementById('sum-wrong').innerText = wrongCount;
+            document.getElementById('sum-maxcombo').innerText = maxCombo;
+            
+            // Thai Date
+            const d = new Date();
+            const thaiMonths = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+            const dateStr = `${d.getDate()} ${thaiMonths[d.getMonth()]} ${d.getFullYear() + 543}`;
+            document.getElementById('sum-date').innerText = `วันที่ ${dateStr}`;
+            document.getElementById('sum-footer').innerHTML = `${settings.teacherName} | ${settings.schoolName}<br><span id="sum-date">วันที่ ${dateStr}</span>`;
+
+            // Calculate Stars
+            let accuracy = correctCount / Math.max(1, (correctCount + wrongCount));
+            let html = '';
+            let starCount = 0;
+            if(score > 0) {
+                if (accuracy >= 0.8 && correctCount >= 5) starCount = 3;
+                else if (accuracy >= 0.5 && correctCount >= 3) starCount = 2;
+                else starCount = 1;
+            }
+            
+            for(let i=0; i<3; i++) {
+                if(i < starCount) html += '<span class="active">★</span> ';
+                else html += '<span>★</span> ';
+            }
+            document.getElementById('sum-stars').innerHTML = html;
+        }
+
+        function renderLeaderboard() {
+            const tbody = document.querySelector('#leaderboard-table tbody');
+            tbody.innerHTML = '';
+            if (leaderboard.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3">ยังไม่มีข้อมูล</td></tr>';
+                return;
+            }
+            
+            leaderboard.forEach((entry, index) => {
+                let rank = index + 1;
+                let rankText = rank;
+                if(rank === 1) rankText = '🥇';
+                if(rank === 2) rankText = '🥈';
+                if(rank === 3) rankText = '🥉';
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${rankText}</td><td>${entry.name}</td><td style="font-weight:bold; color:var(--primary);">${entry.score}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function clearLeaderboard() {
+            if(confirm("แน่ใจหรือไม่ว่าต้องการล้างข้อมูลคะแนนทั้งหมด?")) {
+                leaderboard = [];
+                localStorage.removeItem('rhymingLeaderboard');
+                renderLeaderboard();
+            }
+        }
+
+        async function saveSummaryImage() {
+            if (typeof html2canvas === 'undefined') {
+                alert('ระบบกำลังโหลดเครื่องมือสร้างรูปภาพ กรุณารอสักครู่แล้วลองใหม่');
+                return;
+            }
+            try {
+                const element = document.getElementById('summary-card');
+                
+                // Temporarily adjust styling for canvas capture if needed
+                element.style.boxShadow = 'none';
+                element.style.borderRadius = '0';
+                
+                const canvas = await html2canvas(element, { 
+                    scale: 2, 
+                    backgroundColor: '#ffffff',
+                    logging: false
+                });
+                
+                // Revert styles
+                element.style.boxShadow = '';
+                element.style.borderRadius = '';
+
+                const link = document.createElement('a');
+                link.download = `ผลคะแนน_${studentName || 'นักเรียน'}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                console.error(err);
+                alert('เกิดข้อผิดพลาดในการบันทึกรูปภาพ กรุณาจับภาพหน้าจอแทนครับ/ค่ะ');
+            }
+        }
+
+        /* =========================================
+           6. SETTINGS MANAGEMENT (For Teachers)
+           ========================================= */
+        function loadSettingsUI() {
+            document.getElementById('set-teacher').value = settings.teacherName;
+            document.getElementById('set-school').value = settings.schoolName;
+            document.getElementById('set-gamename').value = settings.gameName;
+            document.getElementById('set-time').value = settings.timeLimit;
+            document.getElementById('set-maxbubbles').value = settings.maxBubbles;
+            document.getElementById('set-diff').value = settings.difficulty;
+            document.getElementById('set-sound').checked = settings.soundEnabled;
+            renderSettingsWordList();
+        }
+
+        function renderSettingsWordList() {
+            const list = document.getElementById('set-wordlist');
+            list.innerHTML = '';
+            settings.words.forEach((w, index) => {
+                const div = document.createElement('div');
+                div.className = 'word-item';
+                div.innerHTML = `
+                    <div>
+                        <strong>โจทย์: ${w.target}</strong><br>
+                        <span style="color:var(--success)">ถูก: ${w.correct.join(', ')}</span><br>
+                        <span style="color:var(--danger)">ผิด: ${w.wrong.join(', ')}</span>
+                    </div>
+                    <button class="btn btn-red" onclick="deleteWord(${index})">ลบ</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function addWordPair() {
+            const t = document.getElementById('add-target').value.trim();
+            const cStr = document.getElementById('add-correct').value.trim();
+            const wStr = document.getElementById('add-wrong').value.trim();
+
+            if(!t || !cStr) {
+                alert("กรุณากรอกคำโจทย์ และ คำถูก อย่างน้อย 1 คำ");
+                return;
+            }
+
+            const corrects = cStr.split(',').map(s=>s.trim()).filter(s=>s!=="");
+            const wrongs = wStr.split(',').map(s=>s.trim()).filter(s=>s!=="");
+
+            settings.words.push({
+                target: t,
+                correct: corrects,
+                wrong: wrongs
+            });
+
+            document.getElementById('add-target').value = '';
+            document.getElementById('add-correct').value = '';
+            document.getElementById('add-wrong').value = '';
+            
+            renderSettingsWordList();
+        }
+
+        function deleteWord(index) {
+            if(confirm('ลบคำศัพท์นี้?')) {
+                settings.words.splice(index, 1);
+                renderSettingsWordList();
+            }
+        }
+
+        function saveSettings() {
+            settings.teacherName = document.getElementById('set-teacher').value.trim() || defaultSettings.teacherName;
+            settings.schoolName = document.getElementById('set-school').value.trim() || defaultSettings.schoolName;
+            settings.gameName = document.getElementById('set-gamename').value.trim() || defaultSettings.gameName;
+            
+            let timeInput = parseInt(document.getElementById('set-time').value);
+            settings.timeLimit = isNaN(timeInput) || timeInput < 10 ? 60 : timeInput;
+            
+            let maxB = parseInt(document.getElementById('set-maxbubbles').value);
+            settings.maxBubbles = isNaN(maxB) || maxB < 3 ? 8 : maxB;
+            
+            settings.difficulty = document.getElementById('set-diff').value;
+            settings.soundEnabled = document.getElementById('set-sound').checked;
+
+            if(settings.words.length === 0) {
+                alert("ต้องมีคำศัพท์อย่างน้อย 1 คู่");
+                return;
+            }
+
+            localStorage.setItem('rhymingSettings', JSON.stringify(settings));
+            applySettingsToUI();
+            alert("บันทึกการตั้งค่าเรียบร้อยแล้ว");
+            showScreen('home-screen');
+        }
+
+        function resetSettings() {
+            if(confirm('ต้องการคืนค่าการตั้งค่าและคำศัพท์ทั้งหมดเป็นค่าเริ่มต้นจากระบบหรือไม่?')) {
+                settings = JSON.parse(JSON.stringify(defaultSettings));
+                localStorage.setItem('rhymingSettings', JSON.stringify(settings));
+                loadSettingsUI();
+                applySettingsToUI();
+                alert("คืนค่าเริ่มต้นสำเร็จ");
+            }
+        }
+
+        /* =========================================
+           7. VISUAL DECORATIONS
+           ========================================= */
+        function generateClouds() {
+            const bg = document.getElementById('bg-decor');
+            for(let i=0; i<6; i++) {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                
+                // Randomize size
+                const w = Math.random() * 100 + 100;
+                const h = w * 0.3;
+                cloud.style.width = w + 'px';
+                cloud.style.height = h + 'px';
+                
+                // Random position
+                cloud.style.left = (Math.random() * 100) + 'vw';
+                cloud.style.top = (Math.random() * 80) + 'vh';
+                
+                // Inner parts styling dynamically
+                const style = document.createElement('style');
+                const id = 'c_' + i;
+                cloud.id = id;
+                style.innerHTML = `
+                    #${id}::before { width: ${w*0.5}px; height: ${w*0.5}px; top: -${w*0.2}px; left: ${w*0.1}px; }
+                    #${id}::after { width: ${w*0.4}px; height: ${w*0.4}px; top: -${w*0.15}px; right: ${w*0.15}px; }
+                `;
+                document.head.appendChild(style);
+                bg.appendChild(cloud);
+            }
+        }
+
+        // Run Init
+        window.onload = init;
+
+    </script>
+</body>
+</html>
